@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.example.minigamerecu.controller.GameController">
+    
+    <!-- Background Image -->
+    <ImageView fx:id="backgroundImage" fitWidth="459" fitHeight="644" preserveRatio="false" pickOnBounds="true" smooth="true">
+        <image>
+            <Image url="@../images/fondo.jpg"/>
+        </image>
+    </ImageView>
+    
+    <!-- Stars Container -->
+    <Pane fx:id="starsContainer" mouseTransparent="true"/>
+
+    <!-- Particles Container -->
+    <Pane fx:id="particlesContainer" mouseTransparent="true"/>
+
+    <!-- Main Content -->
+    <VBox alignment="center" spacing="18" style="-fx-background-color: transparent;">
+        <padding>
+            <Insets top="20" right="28" bottom="20" left="28"/>
+        </padding>
+
+        <!-- Header with Glassmorphism -->
+        <VBox alignment="center" spacing="10">
+            <!-- Instructions Button -->
+            <Button fx:id="instructionsButton"
+                    text="?"
+                    onAction="#showInstructions"
+                    style="-fx-background-color: rgba(139, 69, 19, 0.85); -fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold; -fx-pref-width: 45; -fx-pref-height: 45; -fx-background-radius: 22; -fx-border-color: rgba(255, 215, 0, 0.8); -fx-border-width: 2; -fx-border-radius: 22; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);"
+                    onMouseEntered="#onInstructionsButtonHover"
+                    onMouseExited="#onInstructionsButtonExit"/>
+            
+            <!-- Title -->
+            <VBox alignment="center" spacing="5">
+                <VBox alignment="center" 
+                      style="-fx-background-color: rgba(139, 69, 19, 0.2); -fx-background-radius: 15; -fx-border-color: rgba(184, 134, 11, 0.8); -fx-border-width: 3; -fx-border-radius: 15; -fx-padding: 10 18 10 18; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 0);">
+                    <Label fx:id="titleLabel"
+                           text="🎯 JUEGO DE PAREJAS" 
+                           style="-fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 10, 0, 0, 0);">
+                        <font>
+                            <Font name="Arial Black" size="26"/>
+                        </font>
+                    </Label>
+                </VBox>
+            </VBox>
+            
+            <HBox spacing="18" alignment="center">
+                <VBox alignment="center" 
+                      style="-fx-background-color: rgba(139, 69, 19, 0.15); -fx-background-radius: 12; -fx-border-color: rgba(184, 134, 11, 0.3); -fx-border-width: 1; -fx-border-radius: 12; -fx-padding: 8 16 8 16; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 12, 0, 0, 0);">
+                    <Label text="Movimientos" 
+                           style="-fx-text-fill: rgba(255,255,255,0.9);">
+                        <font>
+                            <Font name="Arial" size="9"/>
+                        </font>
+                    </Label>
+                    <Label fx:id="movesLabel" 
+                           text="0" 
+                           style="-fx-text-fill: white;">
+                        <font>
+                            <Font name="Arial Bold" size="23"/>
+                        </font>
+                    </Label>
+                </VBox>
+                
+                <VBox alignment="center" 
+                      style="-fx-background-color: rgba(139, 69, 19, 0.15); -fx-background-radius: 12; -fx-border-color: rgba(184, 134, 11, 0.3); -fx-border-width: 1; -fx-border-radius: 12; -fx-padding: 8 16 8 16; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 12, 0, 0, 0);">
+                    <Label text="Parejas" 
+                           style="-fx-text-fill: rgba(255,255,255,0.9);">
+                        <font>
+                            <Font name="Arial" size="9"/>
+                        </font>
+                    </Label>
+                    <Label fx:id="pairsLabel" 
+                           text="0/8" 
+                           style="-fx-text-fill: white;">
+                        <font>
+                            <Font name="Arial Bold" size="23"/>
+                        </font>
+                    </Label>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Game Grid -->
+        <GridPane fx:id="board"
+                  hgap="12" 
+                  vgap="12"
+                  alignment="center">
+        </GridPane>
+
+        <!-- Victory Message Container -->
+        <VBox fx:id="victoryContainer"
+              alignment="center"
+              spacing="7"
+              visible="false"
+              managed="false">
+            <VBox alignment="center" 
+                  style="-fx-background-color: linear-gradient(from 0% 0% to 100% 0%, #fde047 0%, #f472b6 50%, #c084fc 100%); -fx-background-radius: 21; -fx-padding: 2; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 21, 0, 0, 0);">
+                <VBox alignment="center" 
+                      style="-fx-background-color: rgba(0,0,0,0.9); -fx-background-radius: 19; -fx-padding: 21;">
+                    <HBox alignment="center" spacing="11">
+                        <Label fx:id="victoryEmoji1" 
+                               text="🎉" 
+                               style="-fx-text-fill: white;">
+                            <font>
+                                <Font name="Arial" size="34"/>
+                            </font>
+                        </Label>
+                        <Label fx:id="victoryMessage" 
+                               text="" 
+                               style="-fx-text-fill: linear-gradient(from 0% 0% to 100% 0%, #fde047 0%, #f472b6 50%, #c084fc 100%);">
+                            <font>
+                                <Font name="Arial Black" size="25"/>
+                            </font>
+                        </Label>
+                        <Label fx:id="victoryEmoji2" 
+                               text="🎉" 
+                               style="-fx-text-fill: white;">
+                            <font>
+                                <Font name="Arial" size="34"/>
+                            </font>
+                        </Label>
+                    </HBox>
+                    <Label fx:id="victorySubMessage" 
+                           text="" 
+                           style="-fx-text-fill: white;">
+                        <font>
+                            <Font name="Arial" size="14"/>
+                        </font>
+                    </Label>
+                </VBox>
+            </VBox>
+        </VBox>
+    </VBox>
+</StackPane>
