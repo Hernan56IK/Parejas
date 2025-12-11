@@ -5,6 +5,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.paint.Color?>
@@ -14,17 +15,14 @@
 <StackPane fx:controller="com.example.minigamerecu.controller.StartController"
            xmlns:fx="http://javafx.com/fxml">
     
-    <!-- Background Image -->
     <ImageView fx:id="backgroundImageView" fitWidth="400" fitHeight="500" preserveRatio="false" pickOnBounds="true" smooth="true">
         <image>
             <Image url="@../images/portada.jpg"/>
         </image>
     </ImageView>
     
-    <!-- Dark Overlay for better text readability -->
     <Rectangle fx:id="overlay" width="400" height="500" fill="black" opacity="0.3"/>
     
-    <!-- Content -->
     <VBox alignment="center"
           spacing="25"
           style="-fx-background-color: transparent;">
@@ -33,7 +31,6 @@
             <Insets top="30" right="15" bottom="30" left="15"/>
         </padding>
 
-        <!-- Title with frame -->
         <VBox alignment="center" 
               style="-fx-background-color: rgba(139, 69, 19, 0.95); -fx-background-radius: 20; -fx-border-color: rgba(255, 215, 0, 0.9); -fx-border-width: 4; -fx-border-radius: 20; -fx-padding: 12 15 12 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 20, 0, 0, 0);">
             <Label text="🎯 Juego de Parejas" 
@@ -44,7 +41,6 @@
             </Label>
         </VBox>
 
-        <!-- Subtitle with frame -->
         <VBox alignment="center" 
               style="-fx-background-color: rgba(139, 69, 19, 0.75); -fx-background-radius: 15; -fx-border-color: rgba(184, 134, 11, 0.6); -fx-border-width: 2; -fx-border-radius: 15; -fx-padding: 10 20 10 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 0);">
             <Label text="Encuentra las parejas" 
@@ -55,30 +51,62 @@
             </Label>
         </VBox>
 
-        <!-- Instructions with frame -->
-        <VBox spacing="12" alignment="center"
-              style="-fx-background-color: rgba(139, 69, 19, 0.75); -fx-background-radius: 15; -fx-backdrop-filter: blur(10); -fx-border-color: rgba(184, 134, 11, 0.6); -fx-border-width: 2; -fx-border-radius: 15; -fx-padding: 15 20 15 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 0);">
-            <Label text="Tienes 30 movimientos" 
+        <VBox spacing="10" alignment="center"
+              style="-fx-background-color: rgba(139, 69, 19, 0.75); -fx-background-radius: 15; -fx-border-color: rgba(184, 134, 11, 0.6); -fx-border-width: 2; -fx-border-radius: 15; -fx-padding: 15 20 15 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 0);">
+            <Label text="Selecciona Dificultad" 
                    style="-fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 6, 0, 0, 0);">
                 <font>
-                    <Font name="Arial" size="16"/>
+                    <Font name="Arial Bold" size="16"/>
                 </font>
             </Label>
-            <Label text="Encuentra todas las parejas" 
-                   style="-fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 6, 0, 0, 0);">
+            <HBox spacing="8" alignment="center">
+                <Button fx:id="easyButton" 
+                        text="Fácil" 
+                        onAction="#onDifficultySelected"
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14; -fx-pref-width: 80; -fx-pref-height: 40; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 0);"
+                        onMouseEntered="#onDifficultyButtonHover"
+                        onMouseExited="#onDifficultyButtonExit"/>
+                <Button fx:id="mediumButton" 
+                        text="Medio" 
+                        onAction="#onDifficultySelected"
+                        style="-fx-background-color: #FF9800; -fx-text-fill: white; -fx-font-size: 14; -fx-pref-width: 80; -fx-pref-height: 40; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 0);"
+                        onMouseEntered="#onDifficultyButtonHover"
+                        onMouseExited="#onDifficultyButtonExit"/>
+                <Button fx:id="hardButton" 
+                        text="Difícil" 
+                        onAction="#onDifficultySelected"
+                        style="-fx-background-color: #F44336; -fx-text-fill: white; -fx-font-size: 14; -fx-pref-width: 80; -fx-pref-height: 40; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 0);"
+                        onMouseEntered="#onDifficultyButtonHover"
+                        onMouseExited="#onDifficultyButtonExit"/>
+                <Button fx:id="expertButton" 
+                        text="Experto" 
+                        onAction="#onDifficultySelected"
+                        style="-fx-background-color: #9C27B0; -fx-text-fill: white; -fx-font-size: 14; -fx-pref-width: 80; -fx-pref-height: 40; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 0);"
+                        onMouseEntered="#onDifficultyButtonHover"
+                        onMouseExited="#onDifficultyButtonExit"/>
+            </HBox>
+            <Label fx:id="difficultyInfoLabel" 
+                   text="Medio: 4x4, 8 pares, 20 movimientos" 
+                   style="-fx-text-fill: rgba(255,255,255,0.9); -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 4, 0, 0, 0);">
                 <font>
-                    <Font name="Arial" size="14"/>
+                    <Font name="Arial" size="12"/>
                 </font>
             </Label>
         </VBox>
 
-        <!-- Button with enhanced style -->
         <Button fx:id="startButton" 
                 text="Comenzar Juego" 
                 onAction="#onStartButtonClick"
                 style="-fx-background-color: #8B4513; -fx-text-fill: white; -fx-font-size: 18; -fx-pref-width: 220; -fx-pref-height: 55; -fx-background-radius: 25; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 0); -fx-border-color: rgba(184, 134, 11, 0.8); -fx-border-width: 2; -fx-border-radius: 25;"
                 onMouseEntered="#onButtonHover"
                 onMouseExited="#onButtonExit"/>
+
+        <Button fx:id="exitButton" 
+                text="Salir del Juego" 
+                onAction="#onExitButtonClick"
+                style="-fx-background-color: #8B4513; -fx-text-fill: white; -fx-font-size: 18; -fx-pref-width: 220; -fx-pref-height: 55; -fx-background-radius: 25; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 0); -fx-border-color: rgba(184, 134, 11, 0.8); -fx-border-width: 2; -fx-border-radius: 25;"
+                onMouseEntered="#onExitButtonHover"
+                onMouseExited="#onExitButtonExit"/>
 
     </VBox>
 </StackPane>

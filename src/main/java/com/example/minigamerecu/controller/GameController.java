@@ -17,18 +17,23 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import com.example.minigamerecu.model.Card;
+import com.example.minigamerecu.manager.GameManager;
 
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Controlador principal del juego de memoria.
+ * Gestiona la interfaz de usuario, las interacciones con las cartas, animaciones,
+ * sistema de pistas y la lógica del juego.
+ */
 public class GameController {
 
-    private static final String[] SYMBOLS = {"🎮", "🎨", "🎭", "🎪", "🎯", "🎲", "🎸", "🎹"};
-    private static final int GRID_SIZE = 4;
-    private static final int TOTAL_PAIRS = 8;
+    private final GameManager gameManager = GameManager.getInstance();
 
     @FXML
     private GridPane board;
@@ -67,38 +72,94 @@ public class GameController {
     private Button instructionsButton;
 
     @FXML
+    private Button hintButton;
+
+    @FXML
+    private Label hintLabel;
+
+    @FXML
     private ImageView backgroundImage;
 
     private List<Card> cards = new ArrayList<>();
     private Map<Button, Card> cardMap = new HashMap<>();
     private Map<Button, Integer> buttonIndexMap = new HashMap<>();
-    private Map<Button, Label> buttonLabelMap = new HashMap<>();
+    private Map<Button, Text> buttonTextMap = new HashMap<>();
+    private Map<Button, javafx.scene.layout.StackPane> buttonPaneMap = new HashMap<>();
     private List<Button> flippedButtons = new ArrayList<>();
     private Set<Integer> matchedIndices = new HashSet<>();
     private List<Circle> stars = new ArrayList<>();
 
-    private boolean processing = false;
-    private int moves = 0;
-    private int matchedPairsCount = 0;
-    private boolean gameWon = false;
+    /**
+     * Calcula el tamaño de las cartas según la dificultad actual.
+     * 
+     * @return El tamaño en píxeles de las cartas (80 para tablero 4x4, 60 para 6x6)
+     */
+    private int getCardSize() {
+        int gridSize = gameManager.getGridSize();
+        return gridSize == 4 ? 80 : 60;
+    }
+    
+    /**
+     * Calcula el tamaño de fuente para los emojis según la dificultad actual.
+     * 
+     * @return El tamaño de fuente en píxeles (36 para tablero 4x4, 28 para 6x6)
+     */
+    private int getFontSize() {
+        int gridSize = gameManager.getGridSize();
+        return gridSize == 4 ? 36 : 28;
+    }
+    
+    /**
+     * Obtiene una fuente compatible con emojis, probando múltiples fuentes disponibles.
+     * 
+     * @param size El tamaño de la fuente
+     * @return Una fuente compatible con emojis o la fuente del sistema por defecto
+     */
+    private Font getEmojiFont(double size) {
+        String[] emojiFonts = {
+            "Segoe UI Emoji",
+            "Apple Color Emoji",
+            "Noto Color Emoji",
+            "EmojiOne Color",
+            "System"
+        };
+        
+        for (String fontName : emojiFonts) {
+            try {
+                Font font = new Font(fontName, size);
+                if (font != null) {
+                    return font;
+                }
+            } catch (Exception e) {
+            }
+        }
+        
+        return new Font(size);
+    }
 
+    /**
+     * Inicializa el controlador y configura todos los componentes de la interfaz.
+     * Se ejecuta automáticamente cuando se carga el FXML.
+     */
     @FXML
     public void initialize() {
         setupBackgroundImage();
         createStars();
         animateTitle();
         initializeGame();
+        updateHintButton();
     }
 
+    /**
+     * Configura la imagen de fondo para que se ajuste al tamaño de la ventana.
+     */
     private void setupBackgroundImage() {
         if (backgroundImage != null) {
-            // Hacer que la imagen se ajuste al tamaño de la ventana
             Scene scene = backgroundImage.getScene();
             if (scene != null) {
                 backgroundImage.fitWidthProperty().bind(scene.widthProperty());
                 backgroundImage.fitHeightProperty().bind(scene.heightProperty());
             } else {
-                // Si la escena aún no está disponible, esperar a que esté
                 backgroundImage.sceneProperty().addListener((obs, oldScene, newScene) -> {
                     if (newScene != null) {
                         backgroundImage.fitWidthProperty().bind(newScene.widthProperty());
@@ -109,6 +170,9 @@ public class GameController {
         }
     }
 
+    /**
+     * Crea y anima las estrellas decorativas en el fondo.
+     */
     private void createStars() {
         Random random = new Random();
         for (int i = 0; i < 50; i++) {
@@ -124,7 +188,6 @@ public class GameController {
             starsContainer.getChildren().add(star);
             stars.add(star);
             
-            // Animación de parpadeo
             FadeTransition ft = new FadeTransition(Duration.seconds(3), star);
             ft.setFromValue(0.0);
             ft.setToValue(1.0);
@@ -135,6 +198,9 @@ public class GameController {
         }
     }
 
+    /**
+     * Aplica una animación de parpadeo al título del juego.
+     */
     private void animateTitle() {
         if (titleLabel != null) {
             FadeTransition ft = new FadeTransition(Duration.millis(3000), titleLabel);
@@ -146,26 +212,47 @@ public class GameController {
         }
     }
 
+    /**
+     * Inicializa una nueva partida del juego.
+     * Genera las cartas, las baraja y dibuja el tablero.
+     * 
+     * @throws IllegalStateException Si no hay suficientes símbolos para el número de pares requeridos
+     */
     private void initializeGame() {
-        // Limpiar estado anterior
+        gameManager.startNewGame();
+        
         board.getChildren().clear();
         cards.clear();
         cardMap.clear();
         buttonIndexMap.clear();
-        buttonLabelMap.clear();
+        buttonTextMap.clear();
+        buttonPaneMap.clear();
         flippedButtons.clear();
         matchedIndices.clear();
-        moves = 0;
-        matchedPairsCount = 0;
-        processing = false;
-        gameWon = false;
         victoryContainer.setVisible(false);
         victoryContainer.setManaged(false);
         particlesContainer.getChildren().clear();
         
         updateLabels();
+        updateHintButton();
 
-        // Crear valores con símbolos duplicados y sus IDs
+        String[] ALL_SYMBOLS = GameManager.getSymbols();
+        int totalPairs = gameManager.getTotalPairs();
+        
+        if (totalPairs > ALL_SYMBOLS.length) {
+            throw new IllegalStateException("No hay suficientes símbolos para " + totalPairs + " pares. Se necesitan al menos " + totalPairs + " símbolos únicos.");
+        }
+        
+        String[] SYMBOLS = new String[totalPairs];
+        for (int i = 0; i < totalPairs; i++) {
+            String symbol = ALL_SYMBOLS[i];
+            if (symbol == null || symbol.trim().isEmpty()) {
+                symbol = "❓";
+            }
+            symbol = symbol.replaceAll("[\\uFE00-\\uFE0F]", "").trim();
+            SYMBOLS[i] = symbol;
+        }
+        
         List<Map.Entry<String, Integer>> values = new ArrayList<>();
         for (int i = 0; i < SYMBOLS.length; i++) {
             String symbol = SYMBOLS[i];
@@ -173,19 +260,27 @@ public class GameController {
             values.add(new AbstractMap.SimpleEntry<>(symbol, i));
         }
 
-        // Mezclar
         Collections.shuffle(values);
 
-        // Crear cartas con el ID correcto basado en el símbolo
         for (Map.Entry<String, Integer> entry : values) {
             cards.add(new Card(entry.getValue(), entry.getKey()));
         }
+        
+        gameManager.initializeCards(cards);
 
         drawBoard();
     }
 
+    /**
+     * Dibuja el tablero de juego con todas las cartas.
+     * Crea los botones de las cartas y configura sus eventos.
+     */
     private void drawBoard() {
         int index = 0;
+        int GRID_SIZE = gameManager.getGridSize();
+        
+        int cardSize = getCardSize();
+        int fontSize = getFontSize();
 
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
@@ -193,34 +288,38 @@ public class GameController {
                 final int cardIndex = index;
 
                 Button btn = new Button();
-                btn.setPrefSize(80, 80);
-                btn.setMinSize(80, 80);
-                btn.setMaxSize(80, 80);
+                btn.setPrefSize(cardSize, cardSize);
+                btn.setMinSize(cardSize, cardSize);
+                btn.setMaxSize(cardSize, cardSize);
                 btn.setStyle(getCardStyle(cardIndex, false, false));
                 
-                // Usar Label para mostrar el emoji/texto
-                Label contentLabel = new Label("?");
-                contentLabel.setFont(new Font("Segoe UI Emoji", 36));
-                contentLabel.setStyle("-fx-text-fill: #654321; -fx-alignment: center; -fx-pref-width: 80; -fx-pref-height: 80;");
-                contentLabel.setMaxWidth(Double.MAX_VALUE);
-                contentLabel.setMaxHeight(Double.MAX_VALUE);
-                btn.setGraphic(contentLabel);
+                Text contentText = new Text("?");
+                Font emojiFont = getEmojiFont(fontSize);
+                contentText.setFont(emojiFont);
+                contentText.setFill(javafx.scene.paint.Color.web("#654321"));
+                contentText.setTextAlignment(TextAlignment.CENTER);
+                
+                javafx.scene.layout.StackPane textPane = new javafx.scene.layout.StackPane();
+                textPane.setPrefSize(cardSize, cardSize);
+                textPane.getChildren().add(contentText);
+                textPane.setAlignment(javafx.geometry.Pos.CENTER);
+                
+                btn.setGraphic(textPane);
                 btn.setContentDisplay(javafx.scene.control.ContentDisplay.CENTER);
                 btn.setGraphicTextGap(0);
                 
-                // Ajustar tamaño del botón
-                btn.setPrefSize(80, 80);
-                btn.setMinSize(80, 80);
-                btn.setMaxSize(80, 80);
+                btn.setPrefSize(cardSize, cardSize);
+                btn.setMinSize(cardSize, cardSize);
+                btn.setMaxSize(cardSize, cardSize);
                 
                 btn.setOnMouseEntered(e -> {
-                    if (!matchedIndices.contains(cardIndex) && !flippedButtons.contains(btn) && !processing) {
+                    if (!matchedIndices.contains(cardIndex) && !flippedButtons.contains(btn) && !gameManager.isProcessing()) {
                         btn.setStyle(getCardStyle(cardIndex, false, false, true));
                     }
                 });
                 
                 btn.setOnMouseExited(e -> {
-                    if (!matchedIndices.contains(cardIndex) && !flippedButtons.contains(btn) && !processing) {
+                    if (!matchedIndices.contains(cardIndex) && !flippedButtons.contains(btn) && !gameManager.isProcessing()) {
                         btn.setStyle(getCardStyle(cardIndex, false, false, false));
                     }
                 });
@@ -230,19 +329,28 @@ public class GameController {
                 board.add(btn, col, row);
                 cardMap.put(btn, card);
                 buttonIndexMap.put(btn, cardIndex);
-                buttonLabelMap.put(btn, contentLabel);
+                buttonTextMap.put(btn, contentText);
+                buttonPaneMap.put(btn, textPane);
 
                 index++;
             }
         }
     }
 
+    /**
+     * Maneja el evento de clic en una carta.
+     * Voltea la carta y verifica si hay coincidencia cuando se han volteado dos cartas.
+     * 
+     * @param btn El botón de la carta que fue clickeada
+     * @param index El índice de la carta en la lista
+     */
     private void handleCardClick(Button btn, int index) {
-        if (processing || 
+        if (gameManager.isProcessing() || 
             flippedButtons.contains(btn) || 
             matchedIndices.contains(index) ||
             flippedButtons.size() >= 2 ||
-            gameWon) {
+            gameManager.isGameWon() ||
+            gameManager.isMaxMovesReached()) {
             return;
         }
 
@@ -250,7 +358,6 @@ public class GameController {
         Card card = cardMap.get(btn);
         card.setFlipped(true);
 
-        // Animación de bounce-in al voltear
         ScaleTransition st = new ScaleTransition(Duration.millis(200), btn);
         st.setFromX(1.0);
         st.setFromY(1.0);
@@ -260,19 +367,19 @@ public class GameController {
         st.setCycleCount(2);
         st.play();
 
-        // Mostrar el símbolo
-        Label contentLabel = buttonLabelMap.get(btn);
-        if (contentLabel != null) {
-            contentLabel.setText(card.getSymbol());
-            contentLabel.setFont(new Font("Segoe UI Emoji", 36));
-            contentLabel.setStyle("-fx-text-fill: #654321; -fx-alignment: center; -fx-pref-width: 80; -fx-pref-height: 80;");
+        Text contentText = buttonTextMap.get(btn);
+        if (contentText != null) {
+            int fontSize = getFontSize();
+            contentText.setText(card.getSymbol());
+            contentText.setFont(getEmojiFont(fontSize));
         }
         btn.setStyle(getCardStyle(index, true, false, false));
 
         if (flippedButtons.size() == 2) {
-            moves++;
+            gameManager.incrementMoves();
             updateLabels();
-            processing = true;
+            updateHintButton();
+            gameManager.setProcessing(true);
 
             Timer timer = new Timer();
             timer.schedule(new TimerTask() {
@@ -280,15 +387,28 @@ public class GameController {
                 public void run() {
                     Platform.runLater(() -> {
                         checkMatch();
+                        if (gameManager.isMaxMovesReached() && !gameManager.isGameWon()) {
+                            Timer loseTimer = new Timer();
+                            loseTimer.schedule(new TimerTask() {
+                                @Override
+                                public void run() {
+                                    Platform.runLater(() -> showLoseAlert());
+                                }
+                            }, 500);
+                        }
                     });
                 }
             }, 500);
         }
     }
 
+    /**
+     * Verifica si las dos cartas volteadas forman una pareja.
+     * Si coinciden, las marca como emparejadas. Si no, las voltea de nuevo después de un delay.
+     */
     private void checkMatch() {
         if (flippedButtons.size() != 2) {
-            processing = false;
+            gameManager.setProcessing(false);
             return;
         }
 
@@ -301,44 +421,29 @@ public class GameController {
         int firstIndex = buttonIndexMap.get(firstBtn);
         int secondIndex = buttonIndexMap.get(secondBtn);
 
-        // Comparar tanto por ID como por símbolo para mayor seguridad
         if (firstCard.getId() == secondCard.getId() && 
             firstCard.getSymbol().equals(secondCard.getSymbol())) {
-            // Son pares
             firstCard.setMatched(true);
             secondCard.setMatched(true);
             matchedIndices.add(firstIndex);
             matchedIndices.add(secondIndex);
-            matchedPairsCount++;
+            gameManager.incrementMatchedPairs();
             updateLabels();
+            updateHintButton();
 
-            // Animación de match encontrado
             animateMatchFound(firstBtn);
             animateMatchFound(secondBtn);
 
-            // Cambiar estilo a verde
             firstBtn.setStyle(getCardStyle(firstIndex, true, true, false));
             secondBtn.setStyle(getCardStyle(secondIndex, true, true, false));
-            
-            // Actualizar color del texto en los labels
-            Label label1 = buttonLabelMap.get(firstBtn);
-            Label label2 = buttonLabelMap.get(secondBtn);
-            if (label1 != null) {
-                label1.setStyle("-fx-text-fill: #654321; -fx-alignment: center; -fx-pref-width: 80; -fx-pref-height: 80;");
-            }
-            if (label2 != null) {
-                label2.setStyle("-fx-text-fill: #654321; -fx-alignment: center; -fx-pref-width: 80; -fx-pref-height: 80;");
-            }
 
             flippedButtons.clear();
-            processing = false;
+            gameManager.setProcessing(false);
 
-            // Verificar si ganó
-            if (matchedPairsCount == TOTAL_PAIRS) {
-                gameWon = true;
+            if (gameManager.getMatchedPairsCount() == gameManager.getTotalPairs()) {
+                gameManager.setGameWon(true);
                 createParticles();
                 showVictoryMessage();
-                // Mostrar alerta después de un breve delay
                 Timer timer = new Timer();
                 timer.schedule(new TimerTask() {
                     @Override
@@ -348,7 +453,6 @@ public class GameController {
                 }, 2000);
             }
         } else {
-            // No son pares → voltearlas
             Timer timer = new Timer();
             timer.schedule(new TimerTask() {
                 @Override
@@ -361,13 +465,18 @@ public class GameController {
                         secondCard.setFlipped(false);
                         
                         flippedButtons.clear();
-                        processing = false;
+                        gameManager.setProcessing(false);
                     });
                 }
             }, 1000);
         }
     }
 
+    /**
+     * Aplica una animación de rotación y escala cuando se encuentra una pareja.
+     * 
+     * @param btn El botón de la carta a animar
+     */
     private void animateMatchFound(Button btn) {
         RotateTransition rt = new RotateTransition(Duration.millis(600), btn);
         rt.setFromAngle(0);
@@ -385,16 +494,31 @@ public class GameController {
         pt.play();
     }
 
+    /**
+     * Restablece un botón de carta a su estado inicial (volteada hacia abajo).
+     * 
+     * @param btn El botón a restablecer
+     * @param index El índice de la carta
+     */
     private void resetButton(Button btn, int index) {
-        Label contentLabel = buttonLabelMap.get(btn);
-        if (contentLabel != null) {
-            contentLabel.setText("?");
-            contentLabel.setFont(new Font("Segoe UI Emoji", 36));
-            contentLabel.setStyle("-fx-text-fill: #654321; -fx-alignment: center; -fx-pref-width: 80; -fx-pref-height: 80;");
+        Text contentText = buttonTextMap.get(btn);
+        if (contentText != null) {
+            int fontSize = getFontSize();
+            contentText.setText("?");
+            contentText.setFont(getEmojiFont(fontSize));
         }
         btn.setStyle(getCardStyle(index, false, false, false));
     }
 
+    /**
+     * Genera el estilo CSS para una carta según su estado.
+     * 
+     * @param index El índice de la carta
+     * @param flipped true si la carta está volteada
+     * @param matched true si la carta está emparejada
+     * @param hover true si el mouse está sobre la carta
+     * @return El string con el estilo CSS
+     */
     private String getCardStyle(int index, boolean flipped, boolean matched, boolean hover) {
         if (matched) {
             return "-fx-background-color: linear-gradient(to bottom right, #DAA520, #B8860B); " +
@@ -433,18 +557,31 @@ public class GameController {
         }
     }
 
+    /**
+     * Genera el estilo CSS para una carta según su estado (sin hover).
+     * 
+     * @param index El índice de la carta
+     * @param flipped true si la carta está volteada
+     * @param matched true si la carta está emparejada
+     * @return El string con el estilo CSS
+     */
     private String getCardStyle(int index, boolean flipped, boolean matched) {
         return getCardStyle(index, flipped, matched, false);
     }
 
+    /**
+     * Actualiza las etiquetas de movimientos y parejas encontradas en la interfaz.
+     */
     private void updateLabels() {
-        movesLabel.setText(String.valueOf(moves));
-        pairsLabel.setText(matchedPairsCount + "/" + TOTAL_PAIRS);
+        movesLabel.setText(String.valueOf(gameManager.getMoves()));
+        pairsLabel.setText(gameManager.getMatchedPairsCount() + "/" + gameManager.getTotalPairs());
     }
 
+    /**
+     * Crea partículas animadas para celebrar la victoria.
+     */
     private void createParticles() {
         Random random = new Random();
-        // Usar el tamaño de la escena para las partículas
         Scene scene = particlesContainer.getScene();
         double width = scene != null ? scene.getWidth() : 459;
         double height = scene != null ? scene.getHeight() : 644;
@@ -461,7 +598,6 @@ public class GameController {
             
             particlesContainer.getChildren().add(particle);
             
-            // Animación de partícula flotando hacia arriba
             TranslateTransition tt = new TranslateTransition(Duration.seconds(3), particle);
             tt.setFromY(0);
             tt.setToY(-900);
@@ -483,13 +619,15 @@ public class GameController {
         }
     }
 
+    /**
+     * Muestra el mensaje de victoria con animación.
+     */
     private void showVictoryMessage() {
         victoryMessage.setText("¡FELICIDADES!");
-        victorySubMessage.setText("✨ ¡Completaste el juego en " + moves + " movimientos! ✨");
+        victorySubMessage.setText("✨ ¡Completaste el juego en " + gameManager.getMoves() + " movimientos! ✨");
         victoryContainer.setVisible(true);
         victoryContainer.setManaged(true);
         
-        // Animación de escala
         ScaleTransition st = new ScaleTransition(Duration.millis(500), victoryContainer);
         st.setFromX(0.8);
         st.setFromY(0.8);
@@ -497,7 +635,6 @@ public class GameController {
         st.setToY(1.0);
         st.play();
         
-        // Animar emojis con wiggle
         if (victoryEmoji1 != null) {
             animateWiggle(victoryEmoji1);
         }
@@ -507,6 +644,11 @@ public class GameController {
         }
     }
 
+    /**
+     * Aplica una animación de balanceo a una etiqueta.
+     * 
+     * @param label La etiqueta a animar
+     */
     private void animateWiggle(Label label) {
         RotateTransition rt = new RotateTransition(Duration.millis(500), label);
         rt.setFromAngle(0);
@@ -516,11 +658,58 @@ public class GameController {
         rt.play();
     }
 
+    /**
+     * Muestra un diálogo de alerta cuando el jugador gana el juego.
+     * Incluye estadísticas y opciones para reiniciar o volver al menú.
+     */
     private void showWinAlert() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("¡Felicidades!");
         alert.setHeaderText("¡Has ganado!");
-        alert.setContentText("Has encontrado todas las parejas en " + moves + " movimientos.\n\n¿Qué deseas hacer?");
+        
+        int moves = gameManager.getMoves();
+        int bestScore = gameManager.getBestScore();
+        int totalGames = gameManager.getTotalGamesPlayed();
+        double winRate = gameManager.getWinRate();
+        
+        String statsText = "";
+        if (totalGames > 1) {
+            statsText = String.format(
+                "\n📊 Estadísticas:\n" +
+                "• Mejor puntuación: %d movimientos\n" +
+                "• Partidas jugadas: %d\n" +
+                "• Tasa de victoria: %.1f%%\n",
+                bestScore, totalGames, winRate
+            );
+        }
+        
+        alert.setContentText("Has encontrado todas las parejas en " + moves + " movimientos." + statsText + "\n¿Qué deseas hacer?");
+        
+        ButtonType restartButton = new ButtonType("Reiniciar");
+        ButtonType menuButton = new ButtonType("Menú Principal");
+        
+        alert.getButtonTypes().setAll(restartButton, menuButton);
+        
+        Optional<ButtonType> result = alert.showAndWait();
+        
+        if (result.isPresent()) {
+            if (result.get() == restartButton) {
+                restartGame();
+            } else if (result.get() == menuButton) {
+                goToStartMenu();
+            }
+        }
+    }
+    
+    /**
+     * Muestra un diálogo de alerta cuando el jugador pierde el juego.
+     * Ofrece opciones para reiniciar o volver al menú.
+     */
+    private void showLoseAlert() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("¡Se acabaron los movimientos!");
+        alert.setHeaderText("Has alcanzado el límite de 20 movimientos");
+        alert.setContentText("No lograste encontrar todas las parejas en el tiempo límite.\n\n¿Qué deseas hacer?");
         
         ButtonType restartButton = new ButtonType("Reiniciar");
         ButtonType menuButton = new ButtonType("Menú Principal");
@@ -538,10 +727,18 @@ public class GameController {
         }
     }
 
+    /**
+     * Reinicia el juego actual.
+     */
     private void restartGame() {
         initializeGame();
     }
 
+    /**
+     * Navega de vuelta al menú de inicio.
+     * 
+     * @throws IOException Si hay un error al cargar el archivo FXML del menú
+     */
     private void goToStartMenu() {
         try {
             Stage stage = (Stage) board.getScene().getWindow();
@@ -555,6 +752,9 @@ public class GameController {
         }
     }
 
+    /**
+     * Muestra un diálogo con las instrucciones del juego.
+     */
     @FXML
     private void showInstructions() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -571,7 +771,10 @@ public class GameController {
             "5. Encuentra todas las parejas para ganar.\n\n" +
             "CONSEJOS:\n" +
             "• Memoriza la posición de las cartas.\n" +
-            "• Tienes 30 movimientos para completar el juego.\n" +
+            "• Tienes " + gameManager.getMaxMoves() + " movimientos para completar el juego.\n" +
+            "• Dificultad: " + gameManager.getCurrentDifficulty().getDisplayName() + "\n" +
+            "• Tablero: " + gameManager.getGridSize() + "x" + gameManager.getGridSize() + "\n" +
+            "• Parejas: " + gameManager.getTotalPairs() + "\n" +
             "• ¡Buena suerte!"
         );
         alert.getDialogPane().setStyle(
@@ -581,13 +784,247 @@ public class GameController {
         alert.showAndWait();
     }
 
+    /**
+     * Maneja el evento de hover sobre el botón de instrucciones.
+     * 
+     * @param event El evento de mouse
+     */
     @FXML
     private void onInstructionsButtonHover(javafx.scene.input.MouseEvent event) {
         instructionsButton.setStyle("-fx-background-color: rgba(160, 82, 45, 0.95); -fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold; -fx-pref-width: 45; -fx-pref-height: 45; -fx-background-radius: 22; -fx-border-color: rgba(255, 215, 0, 0.9); -fx-border-width: 2; -fx-border-radius: 22; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 0);");
     }
 
+    /**
+     * Maneja el evento de salida del mouse del botón de instrucciones.
+     * 
+     * @param event El evento de mouse
+     */
     @FXML
     private void onInstructionsButtonExit(javafx.scene.input.MouseEvent event) {
         instructionsButton.setStyle("-fx-background-color: rgba(139, 69, 19, 0.85); -fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold; -fx-pref-width: 45; -fx-pref-height: 45; -fx-background-radius: 22; -fx-border-color: rgba(255, 215, 0, 0.8); -fx-border-width: 2; -fx-border-radius: 22; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
+    }
+
+    /**
+     * Usa una pista para mostrar temporalmente una pareja de cartas.
+     * Bloquea la interacción con las cartas mientras se muestra la pista.
+     */
+    @FXML
+    private void useHint() {
+        if (!gameManager.canUseHint() || gameManager.isProcessing()) {
+            return;
+        }
+
+        List<Integer> unmatchedIndices = new ArrayList<>();
+        for (int i = 0; i < cards.size(); i++) {
+            if (!matchedIndices.contains(i)) {
+                unmatchedIndices.add(i);
+            }
+        }
+
+        if (unmatchedIndices.size() < 2) {
+            return;
+        }
+
+        Integer firstIndex = null;
+        Integer secondIndex = null;
+
+        for (int i = 0; i < unmatchedIndices.size() && firstIndex == null; i++) {
+            int idx1 = unmatchedIndices.get(i);
+            Card card1 = cards.get(idx1);
+            
+            for (int j = i + 1; j < unmatchedIndices.size(); j++) {
+                int idx2 = unmatchedIndices.get(j);
+                Card card2 = cards.get(idx2);
+                
+                if (card1.getId() == card2.getId() && 
+                    card1.getSymbol().equals(card2.getSymbol())) {
+                    firstIndex = idx1;
+                    secondIndex = idx2;
+                    break;
+                }
+            }
+        }
+
+        if (firstIndex == null || secondIndex == null) {
+            return;
+        }
+
+        gameManager.useHint();
+
+        Button firstBtn = null;
+        Button secondBtn = null;
+
+        for (Map.Entry<Button, Integer> entry : buttonIndexMap.entrySet()) {
+            if (entry.getValue().equals(firstIndex)) {
+                firstBtn = entry.getKey();
+            }
+            if (entry.getValue().equals(secondIndex)) {
+                secondBtn = entry.getKey();
+            }
+        }
+
+        if (firstBtn == null || secondBtn == null) {
+            return;
+        }
+
+        gameManager.setProcessing(true);
+        
+        if (hintButton != null) {
+            hintButton.setMouseTransparent(true);
+        }
+
+        showHintCards(firstBtn, firstIndex, secondBtn, secondIndex);
+        updateHintButton();
+    }
+
+    /**
+     * Muestra temporalmente dos cartas como pista con animación.
+     * 
+     * @param firstBtn El botón de la primera carta de la pista
+     * @param firstIndex El índice de la primera carta
+     * @param secondBtn El botón de la segunda carta de la pista
+     * @param secondIndex El índice de la segunda carta
+     */
+    private void showHintCards(Button firstBtn, int firstIndex, Button secondBtn, int secondIndex) {
+        Card firstCard = cardMap.get(firstBtn);
+        Card secondCard = cardMap.get(secondBtn);
+
+        boolean firstWasFlipped = firstCard.isFlipped();
+        boolean secondWasFlipped = secondCard.isFlipped();
+
+        for (Button btn : cardMap.keySet()) {
+            btn.setMouseTransparent(true);
+        }
+
+        firstCard.setFlipped(true);
+        secondCard.setFlipped(true);
+
+        Text firstText = buttonTextMap.get(firstBtn);
+        Text secondText = buttonTextMap.get(secondBtn);
+
+        if (firstText != null) {
+            firstText.setText(firstCard.getSymbol());
+        }
+        if (secondText != null) {
+            secondText.setText(secondCard.getSymbol());
+        }
+
+        String hintStyle = "-fx-background-color: linear-gradient(to bottom right, #FFD700, #FFA500); " +
+                          "-fx-background-radius: 14; " +
+                          "-fx-border-color: #FF6347; " +
+                          "-fx-border-width: 4; " +
+                          "-fx-border-radius: 14; " +
+                          "-fx-text-fill: #654321; " +
+                          "-fx-alignment: center; " +
+                          "-fx-content-display: center; " +
+                          "-fx-effect: dropshadow(gaussian, rgba(255, 215, 0, 0.8), 20, 0, 0, 0);";
+
+        firstBtn.setStyle(hintStyle);
+        secondBtn.setStyle(hintStyle);
+
+        ScaleTransition st1 = new ScaleTransition(Duration.millis(300), firstBtn);
+        st1.setFromX(1.0);
+        st1.setFromY(1.0);
+        st1.setToX(1.15);
+        st1.setToY(1.15);
+        st1.setAutoReverse(true);
+        st1.setCycleCount(2);
+
+        ScaleTransition st2 = new ScaleTransition(Duration.millis(300), secondBtn);
+        st2.setFromX(1.0);
+        st2.setFromY(1.0);
+        st2.setToX(1.15);
+        st2.setToY(1.15);
+        st2.setAutoReverse(true);
+        st2.setCycleCount(2);
+
+        ParallelTransition pt = new ParallelTransition(st1, st2);
+        pt.play();
+
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Platform.runLater(() -> {
+                    if (!firstWasFlipped) {
+                        firstCard.setFlipped(false);
+                        resetButton(firstBtn, firstIndex);
+                    } else {
+                        firstBtn.setStyle(getCardStyle(firstIndex, true, false, false));
+                    }
+
+                    if (!secondWasFlipped) {
+                        secondCard.setFlipped(false);
+                        resetButton(secondBtn, secondIndex);
+                    } else {
+                        secondBtn.setStyle(getCardStyle(secondIndex, true, false, false));
+                    }
+
+                    for (Button btn : cardMap.keySet()) {
+                        int btnIndex = buttonIndexMap.get(btn);
+                        if (!matchedIndices.contains(btnIndex) && 
+                            !gameManager.isGameWon() && 
+                            !gameManager.isMaxMovesReached()) {
+                            btn.setMouseTransparent(false);
+                        }
+                    }
+
+                    gameManager.setProcessing(false);
+                    
+                    updateHintButton();
+                });
+            }
+        }, 2000);
+    }
+
+    /**
+     * Actualiza el estado y apariencia del botón de pistas.
+     * Deshabilita el botón si no se pueden usar más pistas.
+     */
+    private void updateHintButton() {
+        if (hintButton == null) {
+            return;
+        }
+
+        int hintsRemaining = gameManager.getHintsRemaining();
+        boolean canUse = gameManager.canUseHint();
+
+        if (hintLabel != null) {
+            hintLabel.setText("💡 " + hintsRemaining);
+        }
+
+        if (!canUse) {
+            hintButton.setDisable(true);
+            hintButton.setMouseTransparent(false);
+            hintButton.setStyle("-fx-background-color: rgba(100, 100, 100, 0.6); -fx-text-fill: rgba(255,255,255,0.5); -fx-font-size: 20; -fx-font-weight: bold; -fx-pref-width: 60; -fx-pref-height: 60; -fx-background-radius: 30; -fx-border-color: rgba(150, 150, 150, 0.5); -fx-border-width: 2; -fx-border-radius: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 8, 0, 0, 0);");
+        } else {
+            hintButton.setDisable(false);
+            hintButton.setMouseTransparent(false);
+            hintButton.setStyle("-fx-background-color: rgba(255, 165, 0, 0.85); -fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold; -fx-pref-width: 60; -fx-pref-height: 60; -fx-background-radius: 30; -fx-border-color: rgba(255, 215, 0, 0.9); -fx-border-width: 2; -fx-border-radius: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
+        }
+    }
+
+    /**
+     * Maneja el evento de hover sobre el botón de pistas.
+     * 
+     * @param event El evento de mouse
+     */
+    @FXML
+    private void onHintButtonHover(javafx.scene.input.MouseEvent event) {
+        if (gameManager.canUseHint() && !hintButton.isDisable()) {
+            hintButton.setStyle("-fx-background-color: rgba(255, 140, 0, 0.95); -fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold; -fx-pref-width: 60; -fx-pref-height: 60; -fx-background-radius: 30; -fx-border-color: rgba(255, 215, 0, 1.0); -fx-border-width: 3; -fx-border-radius: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 0);");
+        }
+    }
+
+    /**
+     * Maneja el evento de salida del mouse del botón de pistas.
+     * 
+     * @param event El evento de mouse
+     */
+    @FXML
+    private void onHintButtonExit(javafx.scene.input.MouseEvent event) {
+        if (gameManager.canUseHint() && !hintButton.isDisable()) {
+            hintButton.setStyle("-fx-background-color: rgba(255, 165, 0, 0.85); -fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold; -fx-pref-width: 60; -fx-pref-height: 60; -fx-background-radius: 30; -fx-border-color: rgba(255, 215, 0, 0.9); -fx-border-width: 2; -fx-border-radius: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
+        }
     }
 }

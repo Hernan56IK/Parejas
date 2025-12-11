@@ -14,36 +14,47 @@
 <StackPane xmlns:fx="http://javafx.com/fxml"
            fx:controller="com.example.minigamerecu.controller.GameController">
     
-    <!-- Background Image -->
     <ImageView fx:id="backgroundImage" fitWidth="459" fitHeight="644" preserveRatio="false" pickOnBounds="true" smooth="true">
         <image>
             <Image url="@../images/fondo.jpg"/>
         </image>
     </ImageView>
     
-    <!-- Stars Container -->
     <Pane fx:id="starsContainer" mouseTransparent="true"/>
 
-    <!-- Particles Container -->
     <Pane fx:id="particlesContainer" mouseTransparent="true"/>
 
-    <!-- Main Content -->
     <VBox alignment="center" spacing="18" style="-fx-background-color: transparent;">
         <padding>
             <Insets top="20" right="28" bottom="20" left="28"/>
         </padding>
 
-        <!-- Header with Glassmorphism -->
         <VBox alignment="center" spacing="10">
-            <!-- Instructions Button -->
-            <Button fx:id="instructionsButton"
-                    text="?"
-                    onAction="#showInstructions"
-                    style="-fx-background-color: rgba(139, 69, 19, 0.85); -fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold; -fx-pref-width: 45; -fx-pref-height: 45; -fx-background-radius: 22; -fx-border-color: rgba(255, 215, 0, 0.8); -fx-border-width: 2; -fx-border-radius: 22; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);"
-                    onMouseEntered="#onInstructionsButtonHover"
-                    onMouseExited="#onInstructionsButtonExit"/>
+            <HBox spacing="15" alignment="center">
+                <Button fx:id="instructionsButton"
+                        text="?"
+                        onAction="#showInstructions"
+                        style="-fx-background-color: rgba(139, 69, 19, 0.85); -fx-text-fill: white; -fx-font-size: 28; -fx-font-weight: bold; -fx-pref-width: 45; -fx-pref-height: 45; -fx-background-radius: 22; -fx-border-color: rgba(255, 215, 0, 0.8); -fx-border-width: 2; -fx-border-radius: 22; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);"
+                        onMouseEntered="#onInstructionsButtonHover"
+                        onMouseExited="#onInstructionsButtonExit"/>
+                
+                <VBox alignment="center" spacing="2">
+                    <Button fx:id="hintButton"
+                            onAction="#useHint"
+                            style="-fx-background-color: rgba(255, 165, 0, 0.85); -fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold; -fx-pref-width: 60; -fx-pref-height: 60; -fx-background-radius: 30; -fx-border-color: rgba(255, 215, 0, 0.9); -fx-border-width: 2; -fx-border-radius: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);"
+                            onMouseEntered="#onHintButtonHover"
+                            onMouseExited="#onHintButtonExit">
+                        <graphic>
+                            <Label fx:id="hintLabel" text="💡 3" style="-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;">
+                                <font>
+                                    <Font name="Arial" size="16"/>
+                                </font>
+                            </Label>
+                        </graphic>
+                    </Button>
+                </VBox>
+            </HBox>
             
-            <!-- Title -->
             <VBox alignment="center" spacing="5">
                 <VBox alignment="center" 
                       style="-fx-background-color: rgba(139, 69, 19, 0.2); -fx-background-radius: 15; -fx-border-color: rgba(184, 134, 11, 0.8); -fx-border-width: 3; -fx-border-radius: 15; -fx-padding: 10 18 10 18; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 0);">
@@ -94,14 +105,12 @@
             </HBox>
         </VBox>
 
-        <!-- Game Grid -->
         <GridPane fx:id="board"
                   hgap="12" 
                   vgap="12"
                   alignment="center">
         </GridPane>
 
-        <!-- Victory Message Container -->
         <VBox fx:id="victoryContainer"
               alignment="center"
               spacing="7"

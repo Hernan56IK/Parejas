@@ -7,4 +7,6 @@ module com.example.minigamerecu {
     opens com.example.minigamerecu.model to javafx.fxml;
     
     exports com.example.minigamerecu;
+    exports com.example.minigamerecu.manager;
+    exports com.example.minigamerecu.model;
 }
